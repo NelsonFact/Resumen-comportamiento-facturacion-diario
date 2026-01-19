@@ -1,40 +1,45 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import os
 
-# Configuración de página
 st.set_page_config(page_title="Dashboard Clínica 2026", layout="wide")
-
 st.title("🏥 Reporte Gerencial - Movimiento de la Clínica")
 
-# Carga de datos usando los nombres reales de tus archivos
-@st.cache_data
-def load_data():
-    # Cargamos la hoja de resumen que subiste
-    df_res = pd.read_csv('Resumen comportamiento facturacion diario 2026 (1).xlsx - resumen.csv')
-    return df_res
+# Esta función busca cualquier archivo que contenga la palabra 'resumen'
+def find_file(name_part):
+    for file in os.listdir('.'):
+        if name_part in file.lower() and file.endswith('.csv'):
+            return file
+    return None
 
 try:
-    df = load_data()
+    # Intentamos buscar el archivo automáticamente
+    archivo_resumen = find_file('resumen')
     
-    # KPIs rápidos
-    col1, col2 = st.columns(2)
-    with col1:
-        total = df['valor_total'].sum()
-        st.metric("Facturación Total", f"${total:,.0f}")
-    with col2:
-        num_facturas = len(df)
-        st.metric("Total Facturas Emitidas", num_facturas)
+    if archivo_resumen:
+        df = pd.read_csv(archivo_resumen)
+        st.success(f"✅ Cargado con éxito: {archivo_resumen}")
+        
+        # --- MÉTRICAS ---
+        # Usamos nombres de columnas basados en tus archivos cargados
+        col1, col2 = st.columns(2)
+        with col1:
+            # En tus datos la columna se llama 'valor_total'
+            total = df['valor_total'].sum()
+            st.metric("Facturación Total", f"${total:,.0f}")
+        with col2:
+            st.metric("Total Facturas", len(df))
 
-    # Gráfico de barras por Servicio
-    st.subheader("Distribución por Servicio")
-    fig = px.bar(df, x='servicio', y='valor_total', color='SEDE', title="Facturación por Servicio y Sede")
-    st.plotly_chart(fig, use_container_width=True)
-
-    # Detalle de la tabla
-    with st.expander("Ver base de datos completa"):
-        st.write(df)
+        # --- GRÁFICO ---
+        st.subheader("Análisis por Sede y Servicio")
+        fig = px.bar(df, x='servicio', y='valor_total', color='SEDE', 
+                     title="Facturación por Especialidad", barmode='group')
+        st.plotly_chart(fig, use_container_width=True)
+        
+    else:
+        st.error("❌ No encontré ningún archivo que diga 'resumen' en el repositorio.")
+        st.info("Archivos detectados: " + str(os.listdir('.')))
 
 except Exception as e:
-    st.error(f"Error al cargar datos: {e}")
-    st.info("Asegúrate de subir el archivo CSV con el nombre exacto al repositorio.")
+    st.error(f"Hubo un problema con los datos: {e}")
